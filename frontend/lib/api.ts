@@ -1,12 +1,16 @@
-const BASE = process.env.EXPO_PUBLIC_BACKEND_URL;
+const BASE = (process.env.EXPO_PUBLIC_BACKEND_URL || '').replace(/\/$/, '');
 
 export async function callClaude(
   prompt: string,
   opts?: { maxTokens?: number; images?: string[] }
 ): Promise<string> {
+  if (!BASE) {
+    throw new Error('Backend URL not configured. Restart the app and try again.');
+  }
+  const url = `${BASE}/api/claude`;
   let res: Response;
   try {
-    res = await fetch(`${BASE}/api/claude`, {
+    res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -20,6 +24,9 @@ export async function callClaude(
   }
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
+    if (res.status === 404) {
+      throw new Error(`API not found (404) at ${url}. The backend may be sleeping — pull-to-refresh and try again.`);
+    }
     if (res.status === 429) throw new Error("You're generating too fast — wait a moment.");
     if (res.status >= 500) throw new Error('Claude is having trouble. Try again in a few seconds.');
     throw new Error(`Request failed (${res.status}). ${txt.slice(0, 120)}`);
