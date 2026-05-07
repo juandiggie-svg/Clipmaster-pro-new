@@ -4,8 +4,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { C, FONTS, RADIUS, TRIAL_LIMIT, APP_NAME } from '../lib/theme';
-import { store, Profile } from '../lib/store';
+import { C, FONTS, RADIUS, TRIAL_LIMIT, APP_NAME } from '../lib/theme';import { store, Profile } from '../lib/store';
 
 const TILES = [
   { id: 'content', icon: '✂️', title: 'Content', desc: 'Daily posts & hooks', tint: C.gold },
@@ -44,11 +43,25 @@ export default function Hub() {
     router.push(`/tool/${id}` as any);
   };
 
-  const handleReset = () => {
-    Alert.alert('Reset App', 'Clear your profile and trial counter?', [
+  const handleSettings = () => {
+    Alert.alert('Settings', `Trials used: ${gens}/${TRIAL_LIMIT}${paid ? ' · 👑 PRO' : ''}`, [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Reset',
+        text: '🔄 Reset Trial Counter',
+        onPress: async () => {
+          await store.setGens(0);
+          load();
+        },
+      },
+      {
+        text: paid ? '🔒 Lock Pro (testing)' : '👑 Unlock Pro (testing)',
+        onPress: async () => {
+          await store.setPaid(!paid);
+          load();
+        },
+      },
+      {
+        text: '🗑️ Reset Everything',
         style: 'destructive',
         onPress: async () => {
           await store.resetAll();
@@ -75,7 +88,7 @@ export default function Hub() {
               <Text style={s.brandSub}>{profile?.biz || 'Your Brand'}</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={handleReset} style={s.settingsBtn} testID="settings-btn">
+          <TouchableOpacity onPress={handleSettings} style={s.settingsBtn} testID="settings-btn">
             <Text style={{ color: C.textDim, fontSize: 18 }}>⚙️</Text>
           </TouchableOpacity>
         </View>

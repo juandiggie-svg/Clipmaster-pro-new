@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { C, FONTS, RADIUS, TRIAL_LIMIT } from '../../lib/theme';
@@ -46,7 +46,17 @@ export default function ToolScreen() {
     if (paid) return true;
     const gens = await store.getGens();
     if (gens >= TRIAL_LIMIT) {
-      router.replace({ pathname: '/paywall', params: { paywall: '1' } } as any);
+      Alert.alert(
+        '🔒 Trial Ended',
+        "You've used all 3 free generations. Subscribe for $4.99/mo to keep growing your business.",
+        [
+          { text: 'Maybe Later', style: 'cancel' },
+          {
+            text: 'See Plans',
+            onPress: () => router.replace({ pathname: '/paywall', params: { paywall: '1' } } as any),
+          },
+        ],
+      );
       return false;
     }
     await store.setGens(gens + 1);
