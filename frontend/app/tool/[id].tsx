@@ -1,11 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView,
-  KeyboardAvoidingView, Platform, Alert,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { C, FONTS, RADIUS, TRIAL_LIMIT } from '../../lib/theme';
+import { C, FONTS, TRIAL_LIMIT } from '../../lib/theme';
 import { store, Profile } from '../../lib/store';
+import { ActionSheet } from '../../components/ActionSheet';
 import {
   ContentTool, CalendarTool, ScriptsTool, HashtagsTool, RepliesTool, PricingTool,
 } from '../../components/tools-text';
@@ -32,6 +33,7 @@ export default function ToolScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [ready, setReady] = useState(false);
+  const [trialEndedOpen, setTrialEndedOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -46,22 +48,12 @@ export default function ToolScreen() {
     if (paid) return true;
     const gens = await store.getGens();
     if (gens >= TRIAL_LIMIT) {
-      Alert.alert(
-        '🔒 Trial Ended',
-        "You've used all 3 free generations. Subscribe for $4.99/mo to keep growing your business.",
-        [
-          { text: 'Maybe Later', style: 'cancel' },
-          {
-            text: 'See Plans',
-            onPress: () => router.replace({ pathname: '/paywall', params: { paywall: '1' } } as any),
-          },
-        ],
-      );
+      setTrialEndedOpen(true);
       return false;
     }
     await store.setGens(gens + 1);
     return true;
-  }, [router]);
+  }, []);
 
   const meta = META[id as string] || { title: 'TOOL', subtitle: '', icon: '✨' };
 
@@ -90,7 +82,6 @@ export default function ToolScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}>
-        {/* Header */}
         <View style={s.header}>
           <TouchableOpacity onPress={() => router.back()} testID="back-btn" style={s.backBtn}>
             <Text style={{ color: C.gold, fontSize: 20 }}>‹</Text>
@@ -101,12 +92,28 @@ export default function ToolScreen() {
           </View>
         </View>
 
-        <ScrollView
-          contentContainerStyle={s.content}
-          keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
           {renderTool()}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ActionSheet
+        visible={trialEndedOpen}
+        title="🔒 TRIAL ENDED"
+        message="You've used all 3 free generations. Reset your trial counter from the home screen ⚙️ menu, or subscribe for unlimited generations."
+        options={[
+          {
+            label: '🔄 RESET TRIALS NOW',
+            primary: true,
+            onPress: async () => { await store.setGens(0); },
+          },
+          {
+            label: '🔓 SEE PLANS',
+            onPress: () => router.replace({ pathname: '/paywall', params: { paywall: '1' } } as any),
+          },
+        ]}
+        onClose={() => setTrialEndedOpen(false)}
+      />
     </SafeAreaView>
   );
 }

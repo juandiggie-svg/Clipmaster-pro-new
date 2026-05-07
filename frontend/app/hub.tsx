@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Alert,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { C, FONTS, RADIUS, TRIAL_LIMIT, APP_NAME } from '../lib/theme';import { store, Profile } from '../lib/store';
+import { C, FONTS, RADIUS, TRIAL_LIMIT, APP_NAME } from '../lib/theme';
+import { store, Profile } from '../lib/store';
+import { ActionSheet, SheetOption } from '../components/ActionSheet';
 
 const TILES = [
   { id: 'content', icon: '✂️', title: 'Content', desc: 'Daily posts & hooks', tint: C.gold },
@@ -25,6 +27,7 @@ export default function Hub() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [gens, setGens] = useState(0);
   const [paid, setPaid] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const load = useCallback(async () => {
     const [p, g, pd] = await Promise.all([
@@ -39,42 +42,28 @@ export default function Hub() {
 
   const trialsLeft = Math.max(0, TRIAL_LIMIT - gens);
 
-  const openTool = (id: string) => {
-    router.push(`/tool/${id}` as any);
-  };
+  const openTool = (id: string) => router.push(`/tool/${id}` as any);
 
-  const handleSettings = () => {
-    Alert.alert('Settings', `Trials used: ${gens}/${TRIAL_LIMIT}${paid ? ' · 👑 PRO' : ''}`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: '🔄 Reset Trial Counter',
-        onPress: async () => {
-          await store.setGens(0);
-          load();
-        },
-      },
-      {
-        text: paid ? '🔒 Lock Pro (testing)' : '👑 Unlock Pro (testing)',
-        onPress: async () => {
-          await store.setPaid(!paid);
-          load();
-        },
-      },
-      {
-        text: '🗑️ Reset Everything',
-        style: 'destructive',
-        onPress: async () => {
-          await store.resetAll();
-          router.replace('/paywall');
-        },
-      },
-    ]);
-  };
+  const settingsOptions: SheetOption[] = [
+    {
+      label: '🔄 RESET TRIAL COUNTER',
+      primary: true,
+      onPress: async () => { await store.setGens(0); load(); },
+    },
+    {
+      label: paid ? '🔒 LOCK PRO (TESTING)' : '👑 UNLOCK PRO (TESTING)',
+      onPress: async () => { await store.setPaid(!paid); load(); },
+    },
+    {
+      label: '🗑️ RESET EVERYTHING',
+      destructive: true,
+      onPress: async () => { await store.resetAll(); router.replace('/paywall'); },
+    },
+  ];
 
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView style={s.root} contentContainerStyle={{ paddingBottom: 60 }} testID="hub-screen">
-        {/* HEADER */}
         <View style={s.header}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <LinearGradient
@@ -88,32 +77,29 @@ export default function Hub() {
               <Text style={s.brandSub}>{profile?.biz || 'Your Brand'}</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={handleSettings} style={s.settingsBtn} testID="settings-btn">
+          <TouchableOpacity onPress={() => setSheetOpen(true)} style={s.settingsBtn} testID="settings-btn">
             <Text style={{ color: C.textDim, fontSize: 18 }}>⚙️</Text>
           </TouchableOpacity>
         </View>
 
-        {/* HERO BANNER */}
         <View style={s.heroBanner}>
           <Text style={s.heroLabel}>WELCOME BACK{profile?.name ? `, ${profile.name.toUpperCase()}` : ''}</Text>
           <Text style={s.heroTitle}>WHAT ARE WE{'\n'}MAKING TODAY?</Text>
-          {!paid && (
-            <View style={s.trialPill}>
-              <Text style={s.trialPillText}>
-                🎁 {trialsLeft} FREE GEN{trialsLeft !== 1 ? 'S' : ''} LEFT
+          {!paid ? (
+            <View style={[s.trialPill, trialsLeft === 0 && { backgroundColor: C.error + '22', borderColor: C.error + '66' }]}>
+              <Text style={[s.trialPillText, trialsLeft === 0 && { color: C.error }]}>
+                {trialsLeft === 0 ? '🔒 NO TRIALS LEFT — TAP ⚙️ TO RESET' : `🎁 ${trialsLeft} FREE GEN${trialsLeft !== 1 ? 'S' : ''} LEFT`}
               </Text>
             </View>
-          )}
-          {paid && (
+          ) : (
             <View style={[s.trialPill, { backgroundColor: C.gold + '22', borderColor: C.gold + '66' }]}>
               <Text style={[s.trialPillText, { color: C.gold }]}>👑 PRO ACTIVE · UNLIMITED</Text>
             </View>
           )}
         </View>
 
-        {/* TILES GRID */}
         <View style={s.gridWrap}>
-          {TILES.map((t, i) => (
+          {TILES.map((t) => (
             <TouchableOpacity
               key={t.id}
               onPress={() => openTool(t.id)}
@@ -127,6 +113,14 @@ export default function Hub() {
           ))}
         </View>
       </ScrollView>
+
+      <ActionSheet
+        visible={sheetOpen}
+        title="SETTINGS"
+        message={`Trials used: ${gens}/${TRIAL_LIMIT}${paid ? ' · 👑 PRO' : ''}`}
+        options={settingsOptions}
+        onClose={() => setSheetOpen(false)}
+      />
     </SafeAreaView>
   );
 }
